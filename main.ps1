@@ -50,6 +50,13 @@ function Main-Func() {
     Set-ItemProperty $registryPath 'DefaultPassword' -Value "$pass"
 
     # Virtio driver installation
+    Write-Host "### INSTALL SPICE-GUEST-TOOLS ###"
+    $fileName = "spice-guest-tools.exe"
+    $expectedHash = "b5be0754802bcd7f7fe0ccdb877f8a6224ba13a2af7d84eb087a89b3b0237da2"
+    Invoke-WebRequest "https://www.spice-space.org/download/windows/spice-guest-tools/spice-guest-tools-0.141/spice-guest-tools-0.141.exe" -OutFile "$installationDir\$fileName"
+    Check-Hash $installationDir $fileName $expectedHash
+    Start-Process -FilePath "$installationDir\$fileName" -Wait
+
     Write-Host "### INSTALL WINFSP ###"
     $fileName = "winfsp.msi"
     $expectedHash = "6324dc81194a6a08f97b6aeca303cf5c2325c53ede153bae9fc4378f0838c101"
