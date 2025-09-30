@@ -49,7 +49,6 @@ function Main-Func() {
 
     Write-Host "### RESTART EXPLORER ###"
     Stop-Process -Name explorer -Force
-    Start-Process explorer.exe
 
     # Configure automatic login
     Write-Host "### CONFIGURE AUTOMATIC LOGIN ###"
