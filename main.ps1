@@ -1,5 +1,5 @@
 # Run script as follows:
-# iex (irm 'https://powwu.sh/win10-setup.ps1').Content
+# iex (irm 'https://powwu.sh/win10-setup.ps1')
 
 # Prompt for elevation (from https://serverfault.com/a/1058407; thank you!)
 if (!
