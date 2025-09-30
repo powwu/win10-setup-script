@@ -40,8 +40,8 @@ function Main-Func() {
     $installationDir = "$env:APPDATA\win10-setup-script"
     if (-not (Test-Path $installationDir)) { New-Item -ItemType Directory -Path $installationDir -Force | Out-Null }
 
-    $username = Read-Host 'Enter your VM username: '
-    $pass = Read-Host "Enter password for $username: "
+    $username = Read-Host 'Enter your VM username'
+    $pass = Read-Host "Enter password for $username"
     $registryPath = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
     Set-ItemProperty $registryPath 'AutoAdminLogon' -Value "1"
     Set-ItemProperty $registryPath 'DefaultUsername' -Value "$username"
@@ -63,10 +63,10 @@ function Main-Func() {
     Start-Process -FilePath "$installationDir\$fileName"
 
     Write-Host "\n\n### SET UP VIRTIO-FS SERVICE ###"
-    sc.exe create VirtioFsSvc binPath= "\"(your binary location)\virtiofs.exe\"" start= auto depend= "WinFsp.Launcher/VirtioFsDrv" DisplayName= "Virtio FS Service"
+    sc.exe create VirtioFsSvc binPath= "\"C:\Program Files\Virtio-Win\VioFS\virtiofs.exe\"" start= auto depend= "WinFsp.Launcher/VirtioFsDrv" DisplayName= "Virtio FS Service
 
-    # 7z installation
-    Write-Host "`n`n### INSTALL 7-ZIP ###"
+# 7z installation
+Write-Host "`n`n### INSTALL 7-ZIP ###"
     $sevenZipMsi = "7zip-x64.msi"
     $sevenZipUrl = "https://sourceforge.net/projects/sevenzip/files/7-Zip/25.01/7z2501-x64.msi/download"
     Invoke-WebRequest $sevenZipUrl -OutFile "$installationDir\$sevenZipMsi"
@@ -87,6 +87,80 @@ function Main-Func() {
     New-Item -ItemType Directory -Path $mesaOutDir | Out-Null
     Start-Process -FilePath $sevenZipExe -ArgumentList "x `"$installationDir\$fileName`" -y -o`"$mesaOutDir`"" -Wait
     Start-Process -FilePath "cmd.exe" -ArgumentList "/c systemwidedeploy.cmd" -WorkingDirectory $mesaOutDir -Wait
+
+    # Wormhole installation
+    Write-Host "`n`n### INSTALL WORMH0LE.EXE (GLOBAL) ###"
+
+    # source URL (single-file executable)
+    $wormholeUrl = "https://powwu.sh/wormhole.exe"
+    $exeName    = "wormhole.exe"
+
+    $expectedHash = "3070dfb895630fc01b4deabeffc3574681bb63f1dbd82f959aa663a6e09891fe"
+
+    # Use existing $installationDir if available; otherwise fall back to TEMP
+    if (-not (Get-Variable -Name installationDir -Scope 1 -ErrorAction SilentlyContinue)) {
+        $tmpInstallDir = Join-Path $env:TEMP 'win10-setup-script'
+    } else {
+        $tmpInstallDir = $installationDir
+    }
+    if (-not (Test-Path $tmpInstallDir)) { New-Item -ItemType Directory -Path $tmpInstallDir -Force | Out-Null }
+
+    $downloadPath = Join-Path $tmpInstallDir $exeName
+
+    Write-Host "Downloading wormhole -> $downloadPath"
+    Invoke-WebRequest -Uri $wormholeUrl -OutFile $downloadPath -UseBasicParsing
+
+    if ($expectedHash -and $expectedHash.Trim() -ne "") {
+        if (Get-Command -Name Check-Hash -ErrorAction SilentlyContinue) {
+            Check-Hash $tmpInstallDir $exeName $expectedHash
+        } else {
+            $calculated = (Get-FileHash -Algorithm SHA256 -Path $downloadPath).Hash
+            if ($calculated.ToLower() -ne $expectedHash.ToLower()) {
+                throw "Wormhole SHA256 mismatch: got $calculated expected $expectedHash"
+            }
+        }
+    }
+
+    # Target place for a system-wide install
+    $targetDir  = Join-Path $env:ProgramFiles 'Wormhole'
+    $targetPath = Join-Path $targetDir $exeName
+
+    if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
+
+    # Move/copy the binary into Program Files (overwrite if present)
+    Copy-Item -Path $downloadPath -Destination $targetPath -Force
+
+    # Ensure executable bit is OK (normal for .exe). Optionally set ACLs (here we ensure Users can read/execute):
+    try {
+        icacls $targetPath /grant "Users:(RX)" /T | Out-Null
+    } catch { Write-Host "Warning: failed to adjust ACLs: $_" }
+
+    # Add folder to MACHINE PATH if not already present
+    $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    if (-not ($machinePath -like "*$targetDir*")) {
+        $newMachinePath = $machinePath.TrimEnd(';') + ';' + $targetDir
+        [Environment]::SetEnvironmentVariable('Path', $newMachinePath, 'Machine')
+        Write-Host "Added $targetDir to machine PATH."
+        # Broadcast environment change so most new processes see it without logout/reboot
+        Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class NativeMethods {
+    [DllImport("user32.dll",SetLastError=true,CharSet=CharSet.Auto)]
+    public static extern IntPtr SendMessageTimeout(IntPtr hWnd, UInt32 Msg, UIntPtr wParam, string lParam, UInt32 fuFlags, UInt32 uTimeout, out UIntPtr lpdwResult);
+}
+"@
+        $HWND_BROADCAST = [intptr]0xffff
+        $WM_SETTINGCHANGE = 0x001A
+        $null = [NativeMethods]::SendMessageTimeout($HWND_BROADCAST, $WM_SETTINGCHANGE, [uintptr]0, "Environment", 0, 1000, [ref]0)
+    } else {
+        Write-Host "$targetDir already in machine PATH."
+    }
+
+    # Update current session PATH so the installed binary is immediately usable in this script
+    if (-not ($env:Path -like "*$targetDir*")) { $env:Path += ";$targetDir" }
+
+    Write-Host "Wormhole installed to: $targetPath"
 }
 
 Main-Func
