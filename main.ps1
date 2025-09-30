@@ -37,6 +37,20 @@ function Check-Hash($installationDir, $fileName, $expectedHash) {
 }
 
 function Main-Func() {
+    # Explorer changes
+    Write-Host "### ENABLE SHOW FILE EXTENSIONS ###"
+    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name HideFileExt -Value 0
+
+    Write-Host "### ENABLE SHOW HIDDEN FILES ###"
+    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name Hidden -Value 1
+
+    Write-Host "### ENABLE SHOW OS FILES ###"
+    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name ShowSuperHidden -Value 1
+
+    Write-Host "### RESTART EXPLORER ###"
+    Stop-Process -Name explorer -Force
+    Start-Process explorer.exe
+
     # Configure automatic login
     Write-Host "### CONFIGURE AUTOMATIC LOGIN ###"
     $installationDir = "$env:APPDATA\win10-setup-script"
