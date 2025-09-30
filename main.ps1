@@ -54,13 +54,14 @@ function Main-Func() {
     $fileName = "spice-guest-tools.exe"
     $expectedHash = "b5be0754802bcd7f7fe0ccdb877f8a6224ba13a2af7d84eb087a89b3b0237da2"
     Invoke-WebRequest "https://www.spice-space.org/download/windows/spice-guest-tools/spice-guest-tools-0.141/spice-guest-tools-0.141.exe" -OutFile "$installationDir\$fileName"
+    Start-Process msiexec.exe -ArgumentList "/i `"$installationDir\$fileName`" /qn /norestart" -Wait
     Check-Hash $installationDir $fileName $expectedHash
     Start-Process -FilePath "$installationDir\$fileName" -Wait
 
     Write-Host "### INSTALL WINFSP ###"
     $fileName = "winfsp.msi"
     $expectedHash = "6324dc81194a6a08f97b6aeca303cf5c2325c53ede153bae9fc4378f0838c101"
-    Invoke-WebRequest "https://www.7-zip.org/a/7z2501-x64.msi" -OutFile "$installationDir\$fileName"
+    Invoke-WebRequest "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi" -OutFile "$installationDir\$fileName"
     Check-Hash $installationDir $fileName $expectedHash
     Start-Process -FilePath "$installationDir\$fileName" -Wait
 
@@ -76,10 +77,9 @@ function Main-Func() {
 
 # 7z installation
     Write-Host "`n`n### INSTALL 7-ZIP ###"
-    $sevenZipMsi = "7zip-x64.msi"
-    $sevenZipUrl = "https://sourceforge.net/projects/sevenzip/files/7-Zip/25.01/7z2501-x64.msi/download"
-    Invoke-WebRequest $sevenZipUrl -OutFile "$installationDir\$sevenZipMsi"
-    Start-Process msiexec.exe -ArgumentList "/i `"$installationDir\$sevenZipMsi`" /qn /norestart" -Wait
+    $fileName = "7zip-x64.msi"
+    Invoke-WebRequest "https://www.7-zip.org/a/7z2501-x64.msi" -OutFile "$installationDir\$fileName"
+    Start-Process -FilePath "$installationDir\$fileName" -Wait
     $sevenZipExe = "$env:ProgramFiles\7-Zip\7z.exe"
     if (-not (Test-Path $sevenZipExe)) { $sevenZipExe = "${env:ProgramW6432}\7-Zip\7z.exe" }
     if (-not (Test-Path $sevenZipExe)) { $sevenZipExe = "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
