@@ -78,7 +78,7 @@ function Main-Func() {
     Check-Hash $installationDir $fileName $expectedHash
     Start-Process -FilePath "$installationDir\$fileName" -Wait
 
-    Write-Host "\n\n### INSTALL VIRTIO-WIN-GT ###"
+    Write-Host "### INSTALL VIRTIO-WIN-GT ###"
     $fileName = "virtio-win-gt.msi"
     $expectedHash = "20a15bc93da585f90b4ca3b315652a9478e4c4a76f444d379b357167d727fee4"
     Invoke-WebRequest "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.271-1/virtio-win-gt-x64.msi" -OutFile "$installationDir\$fileName"
@@ -86,10 +86,10 @@ function Main-Func() {
     Start-Process -FilePath "$installationDir\$fileName" -Wait
 
     Write-Host "### SET UP VIRTIO-FS SERVICE ###"
-    sc.exe create VirtioFsSvc 'binPath= "C:\Program Files\Virtio-Win\VioFS\virtiofs.exe"' start= auto depend= WinFsp.Launcher/VirtioFsDrv DisplayName= "Virtio FS Service"
+    New-Service -Name "VirtioFsSvc" -BinaryPathName 'C:\Program Files\Virtio-Win\VioFS\virtiofs.exe' -DisplayName "Virtio FS Service" -StartupType Automatic -DependsOn "WinFsp.Launcher","VirtioFsDrv"
 
 # 7z installation
-    Write-Host "`n`n### INSTALL 7-ZIP ###"
+    Write-Host "### INSTALL 7-ZIP ###"
     $fileName = "7zip-x64.msi"
     Invoke-WebRequest "https://www.7-zip.org/a/7z2501-x64.msi" -OutFile "$installationDir\$fileName"
     Start-Process -FilePath "$installationDir\$fileName" -Wait
