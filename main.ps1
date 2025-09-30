@@ -1,3 +1,6 @@
+# Run script as follows:
+# iex (irm 'https://powwu.sh/win10-setup.ps1').Content
+
 # Prompt for elevation (from https://serverfault.com/a/1058407; thank you!)
 if (!
     #current role
@@ -36,7 +39,6 @@ function Check-Hash($installationDir, $fileName, $expectedHash) {
 function Main-Func() {
     # Configure automatic login
     Write-Host "### CONFIGURE AUTOMATIC LOGIN ###"
-    Set-ExecutionPolicy RemoteSigned -Force
     $installationDir = "$env:APPDATA\win10-setup-script"
     if (-not (Test-Path $installationDir)) { New-Item -ItemType Directory -Path $installationDir -Force | Out-Null }
 
@@ -53,14 +55,14 @@ function Main-Func() {
     $expectedHash = "6324dc81194a6a08f97b6aeca303cf5c2325c53ede153bae9fc4378f0838c101"
     Invoke-WebRequest "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi" -OutFile "$installationDir\$fileName"
     Check-Hash $installationDir $fileName $expectedHash
-    Start-Process -FilePath "$installationDir\$fileName"
+    Start-Process -FilePath "$installationDir\$fileName" -Wait
 
     Write-Host "\n\n### INSTALL VIRTIO-WIN-GT ###"
     $fileName = "virtio-win-gt.msi"
     $expectedHash = "20a15bc93da585f90b4ca3b315652a9478e4c4a76f444d379b357167d727fee4"
     Invoke-WebRequest "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.271-1/virtio-win-gt-x64.msi" -OutFile "$installationDir\$fileName"
     Check-Hash $installationDir $fileName $expectedHash
-    Start-Process -FilePath "$installationDir\$fileName"
+    Start-Process -FilePath "$installationDir\$fileName" -Wait
 
     Write-Host "\n\n### SET UP VIRTIO-FS SERVICE ###"
     sc.exe create VirtioFsSvc binPath= "\"C:\Program Files\Virtio-Win\VioFS\virtiofs.exe\"" start= auto depend= "WinFsp.Launcher/VirtioFsDrv" DisplayName= "Virtio FS Service
