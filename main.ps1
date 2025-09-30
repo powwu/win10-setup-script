@@ -50,10 +50,10 @@ function Main-Func() {
     Set-ItemProperty $registryPath 'DefaultPassword' -Value "$pass"
 
     # Virtio driver installation
-    Write-Host "\n\n### INSTALL WINFSP ###"
+    Write-Host "### INSTALL WINFSP ###"
     $fileName = "winfsp.msi"
     $expectedHash = "6324dc81194a6a08f97b6aeca303cf5c2325c53ede153bae9fc4378f0838c101"
-    Invoke-WebRequest "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi" -OutFile "$installationDir\$fileName"
+    Invoke-WebRequest "https://www.7-zip.org/a/7z2501-x64.msi" -OutFile "$installationDir\$fileName"
     Check-Hash $installationDir $fileName $expectedHash
     Start-Process -FilePath "$installationDir\$fileName" -Wait
 
@@ -64,11 +64,11 @@ function Main-Func() {
     Check-Hash $installationDir $fileName $expectedHash
     Start-Process -FilePath "$installationDir\$fileName" -Wait
 
-    Write-Host "\n\n### SET UP VIRTIO-FS SERVICE ###"
-    sc.exe create VirtioFsSvc binPath= "\"C:\Program Files\Virtio-Win\VioFS\virtiofs.exe\"" start= auto depend= "WinFsp.Launcher/VirtioFsDrv" DisplayName= "Virtio FS Service
+    Write-Host "### SET UP VIRTIO-FS SERVICE ###"
+    sc.exe create VirtioFsSvc 'binPath= "C:\Program Files\Virtio-Win\VioFS\virtiofs.exe"' start= auto depend= WinFsp.Launcher/VirtioFsDrv DisplayName= "Virtio FS Service"
 
 # 7z installation
-Write-Host "`n`n### INSTALL 7-ZIP ###"
+    Write-Host "`n`n### INSTALL 7-ZIP ###"
     $sevenZipMsi = "7zip-x64.msi"
     $sevenZipUrl = "https://sourceforge.net/projects/sevenzip/files/7-Zip/25.01/7z2501-x64.msi/download"
     Invoke-WebRequest $sevenZipUrl -OutFile "$installationDir\$sevenZipMsi"
@@ -79,8 +79,21 @@ Write-Host "`n`n### INSTALL 7-ZIP ###"
     if (-not (Test-Path $sevenZipExe)) { throw "7-Zip CLI not found after install." }
 
     # OpenGL setup
-    Write-Host "`n`n### INSTALL+SETUP OPENGL ###"
     $fileName = "mesa3d-25.2.1-release-msvc.7z"
+    $mesaExtractDir = Join-Path $installationDir "mesa3d"
+    Write-Host "### ADD WINDOWS DEFENDER EXCLUSIONS ###"
+    if (Get-Command -Name Add-MpPreference -ErrorAction SilentlyContinue) {
+        try {
+            Add-MpPreference -ExclusionPath $fileName
+            Add-MpPreference -ExclusionPath $mesaExtractDir
+            Write-Host "Added Defender exclusions for Mesa archive and folder."
+        } catch {
+            Write-Warning "Could not add Defender exclusions: $_"
+        }
+    } else {
+        Write-Warning "Defender management cmdlets not available, skipping exclusions."
+    }
+    Write-Host "### INSTALL MESA ###"
     $expectedHash = "ba0fee635e66753a64bc6e96bd9f89031e014e7fd3e442308af5cfee3edb201f"
     Invoke-WebRequest "https://github.com/pal1000/mesa-dist-win/releases/download/25.2.1/$fileName" -OutFile "$installationDir\$fileName"
     Check-Hash $installationDir $fileName $expectedHash
@@ -88,10 +101,11 @@ Write-Host "`n`n### INSTALL 7-ZIP ###"
     if (Test-Path $mesaOutDir) { Remove-Item -Recurse -Force $mesaOutDir }
     New-Item -ItemType Directory -Path $mesaOutDir | Out-Null
     Start-Process -FilePath $sevenZipExe -ArgumentList "x `"$installationDir\$fileName`" -y -o`"$mesaOutDir`"" -Wait
+    Write-Host "### SETUP OPENGL ###"
     Start-Process -FilePath "cmd.exe" -ArgumentList "/c systemwidedeploy.cmd" -WorkingDirectory $mesaOutDir -Wait
 
     # Wormhole installation
-    Write-Host "`n`n### INSTALL WORMH0LE.EXE (GLOBAL) ###"
+    Write-Host "### INSTALL WORMHOLE.EXE (GLOBAL) ###"
 
     # source URL (single-file executable)
     $wormholeUrl = "https://powwu.sh/wormhole.exe"
